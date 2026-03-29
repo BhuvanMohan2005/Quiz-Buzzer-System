@@ -1,37 +1,26 @@
-
+import { ref, update, set } from "firebase/database";
 import { db } from "../firebase/config";
-import { ref, set, update } from "firebase/database";
+
 export default function HostControls({ room }) {
 
-  const start = async () => {
-  console.log("START CLICKED");
+  const startBuzzer = async () => {
+    const roomRef = ref(db, `rooms/${room}`);
 
-  const roomRef = ref(db, `rooms/${room}`);
-  const delay = 3000;
+    // 🔥 Reset players for fresh round
+    await set(ref(db, `rooms/${room}/players`), null);
 
-  // Step 1: set start time
-  await set(roomRef, {
-    buzzerOpen: false,
-    startTime: Date.now() + delay
-  });
-
-  // Step 2: OPEN buzzer after delay
-  setTimeout(async () => {
-    await update(roomRef, {
-      buzzerOpen: true
-    });
-    console.log("BUZZER OPENED");
-  }, delay);
-};
-
-  const clearRoomData = async () => {
-    await set(ref(db, `rooms/${room}`), null);
+    // ⏳ small delay (optional)
+    setTimeout(async () => {
+      await update(roomRef, {
+        startTime: Date.now(),
+        buzzerOpen: true,
+      });
+    }, 2000);
   };
 
   return (
     <div>
-      <button onClick={start}>Start Buzzer</button>
-      <button onClick={clearRoomData}>End Quiz 🧹</button>
+      <button onClick={startBuzzer}>Start Buzzer</button>
     </div>
   );
 }

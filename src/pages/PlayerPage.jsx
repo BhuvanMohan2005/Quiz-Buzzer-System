@@ -1,14 +1,12 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
-import { ref, set, onValue, update, get, serverTimestamp } from "firebase/database";
+import { ref, set, onValue, update, get } from "firebase/database";
 import { db } from "../firebase/config";
 import countdownSound from "../assets/countdown.wav";
-
 
 export default function PlayerPage() {
   const { room: rawRoom, id, name } = useParams();
   const room = rawRoom.trim().toLowerCase();
- 
 
   const [clicked, setClicked] = useState(false);
   const [reactionTime, setReactionTime] = useState(null);
@@ -26,18 +24,17 @@ export default function PlayerPage() {
     soundRef.current = new Audio(countdownSound);
   }, []);
 
-  // ✅ add player ONCE
+  // ✅ ADD PLAYER (FIXED PATH)
   useEffect(() => {
-    set(ref(db, `players/${id}`), {
+    set(ref(db, `rooms/${room}/players/${id}`), {
       name,
-      room,
       pressed: false,
       pressedAt: null,
       createdAt: Date.now()
     });
   }, [id, name, room]);
 
-  // 🔥 ROOM SYNC (FIXED)
+  // 🔥 ROOM SYNC
   useEffect(() => {
     const roomRef = ref(db, `rooms/${room}`);
 
@@ -51,7 +48,6 @@ export default function PlayerPage() {
       setBuzzerOpen(false);
       hasPlayed.current = false;
 
-      // clear old interval
       if (intervalRef.current) clearInterval(intervalRef.current);
 
       intervalRef.current = setInterval(() => {
@@ -79,9 +75,9 @@ export default function PlayerPage() {
     });
   }, [room]);
 
-  // ✅ PLAYER LISTENER (FIXED)
+  // ✅ PLAYER LISTENER (FIXED PATH)
   useEffect(() => {
-    const playerRef = ref(db, `players/${id}`);
+    const playerRef = ref(db, `rooms/${room}/players/${id}`);
 
     return onValue(playerRef, (snapshot) => {
       const data = snapshot.val();
@@ -91,9 +87,9 @@ export default function PlayerPage() {
         setReactionTime(rt);
       }
     });
-  }, [id, startTime, reactionTime]);
+  }, [id, room, startTime, reactionTime]);
 
-  // 🔴 buzzer press
+  // 🔴 BUZZER PRESS (FIXED PATH + TIMESTAMP)
   const pressBuzzer = async () => {
     if (clicked) return;
     setClicked(true);
@@ -101,14 +97,14 @@ export default function PlayerPage() {
     const snapshot = await get(ref(db, `rooms/${room}`));
     const data = snapshot.val();
 
-    if (!data || Date.now() < data.startTime) {
+    if (!data || !data.buzzerOpen) {
       setClicked(false);
       return;
     }
 
-    await update(ref(db, `players/${id}`), {
+    await update(ref(db, `rooms/${room}/players/${id}`), {
       pressed: true,
-      pressedAt: serverTimestamp()
+      pressedAt: Date.now() // ✅ IMPORTANT (no serverTimestamp)
     });
   };
 
