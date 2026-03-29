@@ -4,8 +4,11 @@ import { ref, set, onValue, update, get, serverTimestamp } from "firebase/databa
 import { db } from "../firebase/config";
 import countdownSound from "../assets/countdown.wav";
 
+
 export default function PlayerPage() {
-  const { room, id, name } = useParams();
+  const { room: rawRoom, id, name } = useParams();
+  const room = rawRoom.trim().toLowerCase();
+ 
 
   const [clicked, setClicked] = useState(false);
   const [reactionTime, setReactionTime] = useState(null);

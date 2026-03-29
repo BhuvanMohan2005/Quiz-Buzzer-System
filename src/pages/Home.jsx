@@ -9,30 +9,25 @@ export default function Home() {
   const navigate = useNavigate();
 
 
-const join = async () => {
-  if (!name || !room) {
-    alert("Enter name and room");
-    return;
-  }
+  const join = async () => {
+    if (!name || !room) return;
 
-  const snapshot = await get(ref(db, `rooms/${room}`));
+    const cleanRoom = room.trim().toLowerCase();
 
-  if (!snapshot.exists()) {
-    alert("Room does not exist. Wait for host.");
-    return;
-  }
+    const snapshot = await get(ref(db, `rooms/${cleanRoom}`));
 
-  const id = Date.now();
-  navigate(`/player/${room}/${id}/${name}`);
-};
-
-  const host = () => {
-    if (!room) {
-      alert("Enter room code");
+    if (!snapshot.exists()) {
+      alert("Room does not exist");
       return;
     }
 
-    navigate(`/host/${room}`);
+    const id = Date.now().toString();
+    navigate(`/player/${cleanRoom}/${id}/${name}`);
+  };
+
+  const host = () => {
+    const cleanRoom = room.trim().toLowerCase();
+    navigate(`/host/${cleanRoom}`);
   };
 
   return (

@@ -1,20 +1,9 @@
 import { useParams } from "react-router-dom";
-import { ref, set } from "firebase/database";
-import { db } from "../firebase/config";
-import { useEffect } from "react";
 import HostControls from "../components/HostControls";
 import Leaderboard from "../components/Leaderboard";
 
 export default function HostPage() {
   const { room } = useParams();
-
-  // ✅ Create room
-  useEffect(() => {
-    set(ref(db, `rooms/${room}`), {
-      buzzerOpen: false,
-      timestamp: null
-    });
-  }, [room]);
 
   return (
     <div style={{ textAlign: "center", marginTop: "40px" }}>
@@ -24,7 +13,7 @@ export default function HostPage() {
       {/* 🎮 Controls */}
       <HostControls room={room} />
 
-      {/* 📊 Leaderboard */}
+      {/* 🏆 Leaderboard */}
       <div style={{ marginTop: "30px" }}>
         <Leaderboard room={room} />
       </div>

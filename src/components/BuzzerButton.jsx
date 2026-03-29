@@ -6,24 +6,24 @@ export default function BuzzerButton({ room, playerId }) {
   const [clicked, setClicked] = useState(false);
 
   const pressBuzzer = async () => {
-    if (clicked) return;
-    setClicked(true);
+  if (clicked) return;
 
-    const roomRef = ref(db, `rooms/${room}`);
-    const snapshot = await get(roomRef);
-    const data = snapshot.val();
+  const snapshot = await get(ref(db, `rooms/${room}`));
+  const data = snapshot.val();
 
-    if (!data || !data.buzzerOpen) {
-      setClicked(false);
-      return;
-    }
+  if (!data || Date.now() < data.startTime) {
+    return;
+  }
 
-    // ✅ DO NOT block others anymore
-    await update(ref(db, `players/${playerId}`), {
-      pressed: true,
-      pressedAt: serverTimestamp()
-    });
-  };
+  setClicked(true);
+
+  await update(ref(db, `players/${id}`), {
+    pressed: true,
+    pressedAt: Date.now()   // 🔥 CHANGE THIS
+  });
+
+  console.log("BUZZ SENT");
+};
 
   return (
     <button disabled={clicked} onClick={pressBuzzer}>

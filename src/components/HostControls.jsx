@@ -1,29 +1,31 @@
-import { ref, set, get } from "firebase/database";
-import { db } from "../firebase/config";
 
+import { db } from "../firebase/config";
+import { ref, set, update } from "firebase/database";
 export default function HostControls({ room }) {
 
   const start = async () => {
-    console.log("START CLICKED");
+  console.log("START CLICKED");
 
-    const roomRef = ref(db, `rooms/${room}`);
+  const roomRef = ref(db, `rooms/${room}`);
+  const delay = 3000;
 
-    // 🔥 ALWAYS CREATE ROOM
-    const delay = 3000;
+  // Step 1: set start time
+  await set(roomRef, {
+    buzzerOpen: false,
+    startTime: Date.now() + delay
+  });
 
-    await set(roomRef, {
-      buzzerOpen: false,
-      startTime: Date.now() + delay
+  // Step 2: OPEN buzzer after delay
+  setTimeout(async () => {
+    await update(roomRef, {
+      buzzerOpen: true
     });
-
-    console.log("START SUCCESS");
-  };
+    console.log("BUZZER OPENED");
+  }, delay);
+};
 
   const clearRoomData = async () => {
-    console.log("END CLICKED");
-
     await set(ref(db, `rooms/${room}`), null);
-    console.log("ROOM CLEARED");
   };
 
   return (
