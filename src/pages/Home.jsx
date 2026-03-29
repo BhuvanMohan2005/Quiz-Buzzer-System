@@ -8,31 +8,23 @@ export default function Home() {
   const [room, setRoom] = useState("");
   const navigate = useNavigate();
 
-  const join = async () => {
-    // ✅ basic validation
-    if (!name || !room) {
-      alert("Enter team name and room code");
-      return;
-    }
 
-    try {
-      // 🔍 check if room exists
-      const roomRef = ref(db, `rooms/${room}`);
-      const snapshot = await get(roomRef);
+const join = async () => {
+  if (!name || !room) {
+    alert("Enter name and room");
+    return;
+  }
 
-      if (!snapshot.exists()) {
-        alert("Room not created yet. Ask host to start first.");
-        return;
-      }
+  const snapshot = await get(ref(db, `rooms/${room}`));
 
-      // ✅ room exists → allow join
-      const id = Date.now();
-      navigate(`/player/${room}/${id}/${name}`);
+  if (!snapshot.exists()) {
+    alert("Room does not exist. Wait for host.");
+    return;
+  }
 
-    } catch (err) {
-      console.error("Error checking room:", err);
-    }
-  };
+  const id = Date.now();
+  navigate(`/player/${room}/${id}/${name}`);
+};
 
   const host = () => {
     if (!room) {

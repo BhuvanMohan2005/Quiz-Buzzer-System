@@ -23,9 +23,16 @@ export default function Leaderboard({ room }) {
         onValue(playersRef, (snapshot) => {
             const data = snapshot.val();
 
+            const TEN_MIN = 10 * 60 * 1000;
+
             const list = Object.entries(data || {})
                 .map(([id, p]) => ({ id, ...p }))
-                .filter(p => p.room === room && p.pressedAt && startTime)
+                .filter(p =>
+                    p.room === room &&
+                    p.pressedAt &&
+                    p.createdAt &&
+                    Date.now() - p.createdAt < TEN_MIN // 🔥 remove old junk
+                )
                 .map(p => ({
                     ...p,
                     reactionTime: p.pressedAt - startTime

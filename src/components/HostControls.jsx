@@ -1,8 +1,9 @@
-import { ref, update, get } from "firebase/database";
+import { ref, update, get, set } from "firebase/database";
 import { db } from "../firebase/config";
 
 export default function HostControls({ room }) {
 
+  // 🚀 Start buzzer
   const start = async () => {
     const roomRef = ref(db, `rooms/${room}`);
 
@@ -22,13 +23,36 @@ export default function HostControls({ room }) {
       });
     }
 
-    const delay = 3000; // 3 sec countdown
+    // start with delay
+    const delay = 3000;
 
     update(roomRef, {
       buzzerOpen: false,
-      startTime: Date.now() + delay // 🔥 FUTURE TIME
+      startTime: Date.now() + delay
     });
   };
 
-  return <button onClick={start}>Start Buzzer</button>;
+  // 🧹 CLEAR ROOM DATA
+  const clearRoomData = async () => {
+    const playersRef = ref(db, "players");
+    const snapshot = await get(playersRef);
+    const data = snapshot.val();
+
+    if (data) {
+      Object.entries(data).forEach(([id, p]) => {
+        if (p.room === room) {
+          set(ref(db, `players/${id}`), null); // delete player
+        }
+      });
+    }
+
+    set(ref(db, `rooms/${room}`), null); // delete room
+  };
+
+  return (
+    <div>
+      <button onClick={start}>Start Buzzer</button>
+      <button onClick={clearRoomData}>End Quiz 🧹</button>
+    </div>
+  );
 }

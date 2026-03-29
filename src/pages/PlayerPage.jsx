@@ -85,6 +85,16 @@ export default function PlayerPage() {
       }
     });
   }, [id, startTime]);
+  
+  useEffect(() => {
+  set(ref(db, `players/${id}`), {
+    name,
+    room,
+    pressed: false,
+    pressedAt: null,
+    createdAt: Date.now() // 🔥 NEW
+  });
+}, [id, name, room]);
 
 
   // 🔴 buzzer press
