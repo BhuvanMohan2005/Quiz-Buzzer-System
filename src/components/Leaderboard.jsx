@@ -31,7 +31,8 @@ export default function Leaderboard({ room }) {
                     p.room === room &&
                     p.pressedAt &&
                     p.createdAt &&
-                    Date.now() - p.createdAt < TEN_MIN // 🔥 remove old junk
+                    startTime && // 🔥 IMPORTANT FIX
+                    Date.now() - p.createdAt < TEN_MIN
                 )
                 .map(p => ({
                     ...p,
