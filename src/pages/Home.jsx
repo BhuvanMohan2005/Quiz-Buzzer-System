@@ -22,7 +22,7 @@ export default function Home() {
     }
 
     const id = Date.now().toString();
-    navigate(`/player/${cleanRoom}/${id}/${name}`);
+    navigate(`/player/${cleanRoom}/${id}/${encodeURIComponent(name)}`);
   };
 
   const host = () => {

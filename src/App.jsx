@@ -8,7 +8,6 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/player/:room/:id" element={<PlayerPage />} />
         <Route path="/host/:room" element={<HostPage />} />
         <Route path="/player/:room/:id/:name" element={<PlayerPage />} />
       </Routes>

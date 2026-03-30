@@ -19,9 +19,10 @@ export default function Leaderboard({ room }) {
       }
 
       const parsed = Object.entries(data).map(([id, p]) => ({
-        id,
-        ...p,
-      }));
+  id,
+  name: p.name || "Unknown", // ✅ safety
+  ...p,
+}));
 
       setPlayers(parsed);
     });
@@ -48,13 +49,16 @@ export default function Leaderboard({ room }) {
       ...p,
       reactionTime: p.pressedAt - startTime,
     }))
-    .sort((a, b) => a.reactionTime - b.reactionTime);
+    .sort((a, b) => a.serverTime - b.serverTime);
 
+
+  const allAnswered =
+  players.length > 0 &&
+  players.every(p => p.pressdAt);
   return (
     <div>
       <h2>Leaderboard</h2>
-
-      {leaderboard.length === 0 ? (
+      {allAnswered&& leaderboard.length === 0 ? (
         <p>No buzz yet</p>
       ) : (
         <table border="1" style={{ margin: "auto" }}>

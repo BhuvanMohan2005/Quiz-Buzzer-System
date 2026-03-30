@@ -1,21 +1,38 @@
-import { ref, update, set } from "firebase/database";
+import { ref, update, get } from "firebase/database";
 import { db } from "../firebase/config";
 
 export default function HostControls({ room }) {
 
   const startBuzzer = async () => {
     const roomRef = ref(db, `rooms/${room}`);
+    const now = Date.now();
 
-    // 🔥 Reset players for fresh round
-    await set(ref(db, `rooms/${room}/players`), null);
+    // ✅ RESET PLAYERS (NOT DELETE)
+    const playersRef = ref(db, `rooms/${room}/players`);
+    const snapshot = await get(playersRef);
 
-    // ⏳ small delay (optional)
-    setTimeout(async () => {
-      await update(roomRef, {
-        startTime: Date.now(),
-        buzzerOpen: true,
+    if (snapshot.exists()) {
+      const updates = {};
+
+      Object.keys(snapshot.val()).forEach((id) => {
+        updates[`${id}/pressed`] = false;
+        updates[`${id}/pressedAt`] = null;
       });
-    }, 2000);
+
+      await update(playersRef, updates);
+    }
+
+    // ✅ START ROUND
+    await update(roomRef, {
+      phase: "countdown",
+      startTime: now + 3000
+    });
+
+    setTimeout(() => {
+      update(roomRef, {
+        phase: "live"
+      });
+    }, 3000);
   };
 
   return (
