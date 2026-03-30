@@ -12,20 +12,24 @@ export default function Leaderboard({ room, startTime }) {
       const data = snapshot.val();
       if (!data) return;
 
-      let list = Object.values(data)
-        .filter(p => p.serverTime);
+      const allPlayers = Object.values(data);
 
-      // 🔥 FAIR SORT
-      list.sort((a, b) => a.serverTime - b.serverTime);
+      // ✅ Separate clicked vs not clicked
+      const clicked = allPlayers.filter(p => p.serverTime);
+      const notClicked = allPlayers.filter(p => !p.serverTime);
 
-      setPlayers(list);
+      // ✅ Sort only valid players
+      clicked.sort((a, b) => a.serverTime - b.serverTime);
+
+      // ✅ Combine: valid first, then inactive
+      setPlayers([...clicked, ...notClicked]);
     });
   }, [room]);
 
   if (players.length === 0) return null;
 
-  const winner = players[0];
-  const winnerTime = winner.pressedAt - startTime;
+  // ✅ Winner = first valid player
+  const winner = players.find(p => p.serverTime);
 
   return (
     <div className="leaderboard">
@@ -33,30 +37,51 @@ export default function Leaderboard({ room, startTime }) {
 
       <div className="table">
         {players.map((p, index) => {
-          const actualTime = p.pressedAt - startTime;
-          const delay = actualTime - winnerTime;
+          const isValid = !!p.serverTime;
+
+          const actualTime = isValid
+            ? p.pressedAt - startTime
+            : null;
+
+          const winnerTime = winner
+            ? winner.pressedAt - startTime
+            : null;
+
+          const delay = isValid && winnerTime !== null
+            ? actualTime - winnerTime
+            : null;
 
           return (
             <div
               key={index}
-              className={`row ${index === 0 ? "winner" : ""}`}
+              className={`row ${index === 0 && isValid ? "winner" : ""}`}
             >
               {/* Rank */}
               <span className="rank">
-                {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}
+                {isValid
+                  ? index === 0 ? "🥇"
+                    : index === 1 ? "🥈"
+                      : index === 2 ? "🥉"
+                        : index + 1
+                  : "—"}
               </span>
 
-              {/* Name */}
-              <span className="name">{p.name}</span>
+              {/* Name + Status */}
+              <span className="name">
+                {p.name}
+                {!isValid && <span className="inactive"> (No Buzz)</span>}
+              </span>
 
               {/* Actual Time */}
               <span className="time">
-                {actualTime} ms
+                {isValid ? `${actualTime} ms` : "—"}
               </span>
 
               {/* Delay */}
               <span className="delay">
-                {delay === 0 ? "0 ms" : `+${delay} ms`}
+                {isValid
+                  ? delay === 0 ? "0 ms" : `+${delay} ms`
+                  : "—"}
               </span>
             </div>
           );

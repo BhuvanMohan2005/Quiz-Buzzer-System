@@ -191,6 +191,15 @@ body {
 .time { width: 80px; text-align: right; }
 .delay { width: 80px; text-align: right; color: #ffb347; font-weight: bold; }
 
+
+/* Inactive players */
+.inactive {
+  color: #999;
+  font-size: 12px;
+  margin-left: 6px;
+  font-style: italic;
+}
+
 /* ================= ANIMATIONS ================= */
 @keyframes fadeUp {
   from { transform: translateY(30px); opacity: 0; }
