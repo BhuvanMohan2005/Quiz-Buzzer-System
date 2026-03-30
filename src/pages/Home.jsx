@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ref, get } from "firebase/database";
+import { ref, get,set } from "firebase/database";
 import { db } from "../firebase/config";
 
 export default function Home() {
@@ -25,10 +25,39 @@ export default function Home() {
     navigate(`/player/${cleanRoom}/${id}/${encodeURIComponent(name)}`);
   };
 
-  const host = () => {
-    const cleanRoom = room.trim().toLowerCase();
+  const host = async () => {
+  if (!room) return;
+
+  const cleanRoom = room.trim().toLowerCase();
+  const roomRef = ref(db, `rooms/${cleanRoom}`);
+
+  const snapshot = await get(roomRef);
+
+  // 🔐 Generate host key
+  const hostKey = Math.random().toString(36).substring(2, 10);
+
+  if (!snapshot.exists()) {
+    // 🆕 Create room
+    await set(roomRef, {
+      phase: "waiting",
+      hostKey
+    });
+
+    localStorage.setItem(`host_${cleanRoom}`, hostKey);
+
     navigate(`/host/${cleanRoom}`);
-  };
+  } else {
+    // ⚠️ Room exists → check if YOU are host
+    const data = snapshot.val();
+    const savedKey = localStorage.getItem(`host_${cleanRoom}`);
+
+    if (savedKey && savedKey === data.hostKey) {
+      navigate(`/host/${cleanRoom}`);
+    } else {
+      alert("❌ Room already has a host");
+    }
+  }
+};
 
   return (
     <div>

@@ -5,16 +5,27 @@ export default function HostControls({ room }) {
 
   const startBuzzer = async () => {
     const roomRef = ref(db, `rooms/${room}`);
+    const snapshot = await get(roomRef);
+    const data = snapshot.val();
+
+    const savedKey = localStorage.getItem(`host_${room}`);
+
+    // 🔐 BLOCK UNAUTHORIZED HOST
+    if (!data || data.hostKey !== savedKey) {
+      alert("❌ You are not the host!");
+      return;
+    }
+
     const now = Date.now();
 
-    // ✅ RESET PLAYERS (NOT DELETE)
+    // ✅ RESET PLAYERS
     const playersRef = ref(db, `rooms/${room}/players`);
-    const snapshot = await get(playersRef);
+    const playersSnap = await get(playersRef);
 
-    if (snapshot.exists()) {
+    if (playersSnap.exists()) {
       const updates = {};
 
-      Object.keys(snapshot.val()).forEach((id) => {
+      Object.keys(playersSnap.val()).forEach((id) => {
         updates[`${id}/pressed`] = false;
         updates[`${id}/pressedAt`] = null;
       });
