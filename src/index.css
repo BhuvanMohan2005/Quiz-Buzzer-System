@@ -70,10 +70,10 @@ body {
 }
 
 .go-text {
-  font-size: 80px;
-  color: #00ff88;
-  text-shadow: 0 0 20px #00ff88;
-  animation: pulse 0.5s infinite;
+  font-size: 40px;
+  color: orange ;
+  text-shadow: 0 0 20px #ec880d;
+  animation:  0.5s infinite;
 }
 
 .result {

@@ -1,85 +1,56 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
-import { ref, set, onValue, update, get } from "firebase/database";
+import { ref, set, onValue, update } from "firebase/database";
 import { db } from "../firebase/config";
-import countdownSound from "../assets/countdown.wav";
 import { serverTimestamp } from "firebase/database";
 
 export default function PlayerPage() {
   const { room: rawRoom, id, name } = useParams();
   const safeName = decodeURIComponent(name || "Player");
-  console.log("NAME PARAM:", name, 'and ', safeName);
   const room = rawRoom.trim().toLowerCase();
 
   const [clicked, setClicked] = useState(false);
   const [reactionTime, setReactionTime] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [countdown, setCountdown] = useState(null);
+  const [phase, setPhase] = useState("waiting"); // waiting | countdown | go | live
+  const [showBuzzer, setShowBuzzer] = useState(false);
 
-  const soundRef = useRef(null);
-  const hasPlayed = useRef(false);
   const intervalRef = useRef(null);
+  const hasStartedRef = useRef(false);   // prevents multiple GO/Buzz
+  const hasClickedRef = useRef(false);   // locks UI after click
+  const currentRoundRef = useRef(null);  // track current round ID
 
-  // 🔊 init sound
-  useEffect(() => {
-    soundRef.current = new Audio(countdownSound);
-  }, []);
-
-  // 🔓 unlock audio (IMPORTANT)
-  useEffect(() => {
-    const unlock = () => {
-      soundRef.current.play().catch(() => { });
-      soundRef.current.pause();
-      soundRef.current.currentTime = 0;
-      window.removeEventListener("click", unlock);
-    };
-    window.addEventListener("click", unlock);
-  }, []);
-
-  // ✅ ADD PLAYER
+  // ✅ Add player to room
   useEffect(() => {
     if (!id || !room) return;
 
     const playerRef = ref(db, `rooms/${room}/players/${id}`);
-
-    // 🔥 SET ONCE — full object
     set(playerRef, {
       name: safeName,
       pressed: false,
       pressedAt: null,
       createdAt: Date.now()
     });
+  }, []);
 
-  }, []); // 🔥 VERY IMPORTANT
-
-
-  // ✅ PLAYER LISTENER
+  // ✅ Listen for player updates
   useEffect(() => {
     const playerRef = ref(db, `rooms/${room}/players/${id}`);
-
     return onValue(playerRef, (snapshot) => {
       const data = snapshot.val();
-
       if (data?.pressedAt && startTime && reactionTime === null) {
         setReactionTime(data.pressedAt - startTime);
       }
     });
   }, [id, room, startTime, reactionTime]);
 
-  // 🔴 BUZZER
+  // 🔴 BUZZER press
   const pressBuzzer = async () => {
-    if (clicked) return;
+    if (clicked || !showBuzzer) return;
 
-    setClicked(true); // 🔥 immediate UI change
-
-    const snapshot = await get(ref(db, `rooms/${room}`));
-    const data = snapshot.val();
-
-
-    if (!data || data.phase !== "live") {
-  setClicked(false);
-  return;
-}
+    hasClickedRef.current = true;
+    setClicked(true);
 
     await update(ref(db, `rooms/${room}/players/${id}`), {
       pressed: true,
@@ -88,8 +59,7 @@ export default function PlayerPage() {
     });
   };
 
-  const [phase, setPhase] = useState("waiting");
-  // "waiting" | "countdown" | "live"
+  // ⏱ Countdown & GO/Buzz logic
   useEffect(() => {
     const roomRef = ref(db, `rooms/${room}`);
 
@@ -100,58 +70,78 @@ export default function PlayerPage() {
         return;
       }
 
-      setStartTime(data.startTime);
-      if (data.phase === "countdown") {
+      const roundId = data.startTime; // unique round identifier
+
+      // 🆕 Detect new round
+      if (currentRoundRef.current !== roundId) {
+        currentRoundRef.current = roundId;
+
+        // reset state for new round
         setClicked(false);
         setReactionTime(null);
+        setShowBuzzer(false);
+        hasClickedRef.current = false;
+        hasStartedRef.current = false;
       }
 
-      hasPlayed.current = false;
+      setStartTime(data.startTime);
 
       if (intervalRef.current) clearInterval(intervalRef.current);
 
       intervalRef.current = setInterval(() => {
+        // stop after click or wrong round
+        if (hasClickedRef.current) return;
+        if (currentRoundRef.current !== roundId) return;
+
         const now = Date.now();
-        const diff = data.startTime - now;
+        const diff = roundId - now;
         const sec = Math.ceil(diff / 1000);
 
         if (diff > 0) {
           setPhase("countdown");
           setCountdown(sec);
-
-          const timeToStart = data.startTime - Date.now();
-
-          if (timeToStart <= 3000 && timeToStart > 2900 && !hasPlayed.current) {
-            hasPlayed.current = true;
-            soundRef.current.currentTime = 0;
-            soundRef.current.play().catch(() => { });
-          }
-
         } else {
-          setPhase("live");
+          if (hasStartedRef.current) return;
+
+          hasStartedRef.current = true;
+          setPhase("go");
           setCountdown(0);
           clearInterval(intervalRef.current);
-        }
 
+          setTimeout(() => {
+            if (hasClickedRef.current) return;
+            if (currentRoundRef.current !== roundId) return;
+
+            setPhase("live");
+            setShowBuzzer(true);
+          }, 600);
+        }
       }, 50);
     });
   }, [room]);
-
 
   return (
     <div className="container">
       <h2 className="player-name">{safeName}</h2>
 
+      {/* Countdown */}
       {phase === "countdown" && countdown > 0 && (
         <h1 className="countdown">{countdown}</h1>
       )}
 
-      {phase === "live" && !clicked && (
+      {/* GO */}
+      {phase === "go" && (
+        <h1 className="go-text">GO 🚀</h1>
+      )}
+
+      {/* Buzzer */}
+      {phase === "live" && showBuzzer && !clicked && (
         <button onClick={pressBuzzer} className="buzzer-btn">
           BUZZ 🚨
         </button>
       )}
 
+      {/* Clicked Result */}
       {clicked && (
         <h2 className="result">✅ Response Recorded</h2>
       )}
