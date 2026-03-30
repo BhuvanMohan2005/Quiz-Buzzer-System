@@ -106,7 +106,7 @@ export default function HostPage() {
       {/* 🏆 LEADERBOARD (ONLY AFTER ALL ANSWERED) */}
       <div style={{ marginTop: "30px" }}>
         {showLeaderboard? (
-          <Leaderboard room={room} />
+          <Leaderboard room={room} startTime={startTime} />
         ) : (
           <p>Waiting for all players...</p>
         )}

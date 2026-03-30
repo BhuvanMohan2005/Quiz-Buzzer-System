@@ -6,26 +6,29 @@ import { serverTimestamp } from "firebase/database";
 
 export default function PlayerPage() {
   const { room: rawRoom, id, name } = useParams();
-  const safeName = decodeURIComponent(name || "Player");
+
   const room = rawRoom.trim().toLowerCase();
+  const safeName = decodeURIComponent(name || "Player");
 
   const [clicked, setClicked] = useState(false);
   const [reactionTime, setReactionTime] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [countdown, setCountdown] = useState(null);
-  const [phase, setPhase] = useState("waiting"); // waiting | countdown | go | live
+  const [phase, setPhase] = useState("waiting");
   const [showBuzzer, setShowBuzzer] = useState(false);
+  const [winner, setWinner] = useState(null);
 
   const intervalRef = useRef(null);
-  const hasStartedRef = useRef(false);   // prevents multiple GO/Buzz
-  const hasClickedRef = useRef(false);   // locks UI after click
-  const currentRoundRef = useRef(null);  // track current round ID
+  const hasStartedRef = useRef(false);
+  const hasClickedRef = useRef(false);
+  const currentRoundRef = useRef(null);
 
-  // ✅ Add player to room
+  // ✅ ADD PLAYER
   useEffect(() => {
     if (!id || !room) return;
 
     const playerRef = ref(db, `rooms/${room}/players/${id}`);
+
     set(playerRef, {
       name: safeName,
       pressed: false,
@@ -34,18 +37,39 @@ export default function PlayerPage() {
     });
   }, []);
 
-  // ✅ Listen for player updates
+  // ✅ PLAYER LISTENER (reaction time)
   useEffect(() => {
     const playerRef = ref(db, `rooms/${room}/players/${id}`);
+
     return onValue(playerRef, (snapshot) => {
       const data = snapshot.val();
+
       if (data?.pressedAt && startTime && reactionTime === null) {
         setReactionTime(data.pressedAt - startTime);
       }
     });
   }, [id, room, startTime, reactionTime]);
 
-  // 🔴 BUZZER press
+  // 🏆 WINNER LISTENER (FAIR)
+  useEffect(() => {
+    const playersRef = ref(db, `rooms/${room}/players`);
+
+    return onValue(playersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const players = Object.values(data)
+        .filter(p => p.serverTime);
+
+      if (players.length === 0) return;
+
+      players.sort((a, b) => a.serverTime - b.serverTime);
+
+      setWinner(players[0]);
+    });
+  }, [room]);
+
+  // 🔴 BUZZER
   const pressBuzzer = async () => {
     if (clicked || !showBuzzer) return;
 
@@ -59,7 +83,7 @@ export default function PlayerPage() {
     });
   };
 
-  // ⏱ Countdown & GO/Buzz logic
+  // ⏱️ COUNTDOWN + ROUND LOGIC
   useEffect(() => {
     const roomRef = ref(db, `rooms/${room}`);
 
@@ -70,26 +94,26 @@ export default function PlayerPage() {
         return;
       }
 
-      const roundId = data.startTime; // unique round identifier
+      const roundId = data.startTime;
 
-      // 🆕 Detect new round
+      // 🔄 NEW ROUND DETECTED
       if (currentRoundRef.current !== roundId) {
         currentRoundRef.current = roundId;
 
-        // reset state for new round
         setClicked(false);
         setReactionTime(null);
         setShowBuzzer(false);
+        setWinner(null);
+
         hasClickedRef.current = false;
         hasStartedRef.current = false;
       }
 
-      setStartTime(data.startTime);
+      setStartTime(roundId);
 
       if (intervalRef.current) clearInterval(intervalRef.current);
 
       intervalRef.current = setInterval(() => {
-        // stop after click or wrong round
         if (hasClickedRef.current) return;
         if (currentRoundRef.current !== roundId) return;
 
@@ -104,6 +128,7 @@ export default function PlayerPage() {
           if (hasStartedRef.current) return;
 
           hasStartedRef.current = true;
+
           setPhase("go");
           setCountdown(0);
           clearInterval(intervalRef.current);
@@ -120,31 +145,51 @@ export default function PlayerPage() {
     });
   }, [room]);
 
+  const isWinner = winner?.name === safeName;
+
   return (
     <div className="container">
       <h2 className="player-name">{safeName}</h2>
 
-      {/* Countdown */}
+      {/* 🔢 Countdown */}
       {phase === "countdown" && countdown > 0 && (
         <h1 className="countdown">{countdown}</h1>
       )}
 
-      {/* GO */}
+      {/* 🚀 GO */}
       {phase === "go" && (
         <h1 className="go-text">GO 🚀</h1>
       )}
 
-      {/* Buzzer */}
+      {/* 🔴 BUZZER */}
       {phase === "live" && showBuzzer && !clicked && (
         <button onClick={pressBuzzer} className="buzzer-btn">
           BUZZ 🚨
         </button>
       )}
 
-      {/* Clicked Result */}
+      {/* ✅ RESULT */}
       {clicked && (
         <h2 className="result">✅ Response Recorded</h2>
       )}
+
+      {/* 🏆 WINNER */}
+      {/* 🏆 WINNER */}
+{winner && (
+  <div className="winner-container">
+    {/* Winner box */}
+    <h2 className="results">
+      {isWinner ? "🏆 YOU WON!" : `🥇 Winner: ${winner.name}`}
+    </h2>
+
+    {/* Current player's delay relative to winner */}
+    <div className="winner-delays">
+      <div className="winner-reaction">
+        ⏱ Your delay: {reactionTime !== null ? (isWinner ? 0 : reactionTime - (winner.pressedAt - startTime)) : "-"} ms
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

@@ -2,84 +2,66 @@ import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
 import { db } from "../firebase/config";
 
-export default function Leaderboard({ room }) {
+export default function Leaderboard({ room, startTime }) {
   const [players, setPlayers] = useState([]);
-  const [startTime, setStartTime] = useState(null);
 
-  // 📥 Fetch players
   useEffect(() => {
     const playersRef = ref(db, `rooms/${room}/players`);
 
-    onValue(playersRef, (snapshot) => {
+    return onValue(playersRef, (snapshot) => {
       const data = snapshot.val();
+      if (!data) return;
 
-      if (!data) {
-        setPlayers([]);
-        return;
-      }
+      let list = Object.values(data)
+        .filter(p => p.serverTime);
 
-      const parsed = Object.entries(data).map(([id, p]) => ({
-  id,
-  name: p.name || "Unknown", // ✅ safety
-  ...p,
-}));
+      // 🔥 FAIR SORT
+      list.sort((a, b) => a.serverTime - b.serverTime);
 
-      setPlayers(parsed);
+      setPlayers(list);
     });
-
   }, [room]);
 
-  // 📥 Fetch startTime
-  useEffect(() => {
-    const roomRef = ref(db, `rooms/${room}`);
+  if (players.length === 0) return null;
 
-    onValue(roomRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data?.startTime) {
-        setStartTime(data.startTime);
-      }
-    });
+  const winner = players[0];
+  const winnerTime = winner.pressedAt - startTime;
 
-  }, [room]);
-
-  // 🧠 Compute leaderboard
-  const leaderboard = players
-    .filter(p => p.pressedAt)
-    .map(p => ({
-      ...p,
-      reactionTime: p.pressedAt - startTime,
-    }))
-    .sort((a, b) => a.serverTime - b.serverTime);
-
-
-  const allAnswered =
-  players.length > 0 &&
-  players.every(p => p.pressdAt);
   return (
-    <div>
-      <h2>Leaderboard</h2>
-      {allAnswered&& leaderboard.length === 0 ? (
-        <p>No buzz yet</p>
-      ) : (
-        <table border="1" style={{ margin: "auto" }}>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Name</th>
-              <th>Time (ms)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboard.map((p, i) => (
-              <tr key={p.id}>
-                <td>{i + 1}</td>
-                <td>{p.name}</td>
-                <td>{p.reactionTime}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <div className="leaderboard">
+      <h2>🏆 Leaderboard</h2>
+
+      <div className="table">
+        {players.map((p, index) => {
+          const actualTime = p.pressedAt - startTime;
+          const delay = actualTime - winnerTime;
+
+          return (
+            <div
+              key={index}
+              className={`row ${index === 0 ? "winner" : ""}`}
+            >
+              {/* Rank */}
+              <span className="rank">
+                {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}
+              </span>
+
+              {/* Name */}
+              <span className="name">{p.name}</span>
+
+              {/* Actual Time */}
+              <span className="time">
+                {actualTime} ms
+              </span>
+
+              {/* Delay */}
+              <span className="delay">
+                {delay === 0 ? "0 ms" : `+${delay} ms`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
